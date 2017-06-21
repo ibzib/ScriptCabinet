@@ -81,7 +81,7 @@ if __name__ == "__main__":
         elif expecting_delimiter:
             settings["delimiter"] = arg
             expecting_delimiter = False
-        elif expecting_color:
+        elif expecting_color: # TODO make sure a broken file path isn't interpreted as a color argument
             try:
                 if len(arg) != 6:
                     raise ValueError("please use a 6-digit hex string, e.g. 'a1b2c3'")
