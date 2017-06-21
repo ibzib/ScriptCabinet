@@ -11,8 +11,18 @@ except ImportError:
         # ignore args and kwargs
         print(text)
 
+def ynprompt():
+    while True:
+        choice = raw_input().lower()
+        if choice == "y" or choice == "yes":
+            return True
+        if choice == "n" or choice == "no":
+            return False
+        else:
+            print("Please respond 'y' or 'n'")
+
 def maketable(infilename, **kwargs):
-    settings = { "writeheader": True, "delimiter": "\t", "colorrows": False, "shadecolor": "dddddd" }
+    settings = { "writeheader": True, "delimiter": "\t", "colorrows": False, "shadecolor": "dddddd", "prompt": True }
     for param in kwargs:
         if param in settings:
             settings[param] = kwargs[param]
@@ -47,6 +57,10 @@ def maketable(infilename, **kwargs):
     
     tree = etree.ElementTree(table)
     outfilename = os.path.splitext(infilename)[0] + ".html"
+    if os.path.isfile(outfilename) and settings["prompt"]:
+        cprint("File '%s' already exists. Overwrite? [y/n]" % outfilename, attrs=["bold"])
+        if not ynprompt():
+            return
     tree.write(outfilename, encoding="utf-8")
     cprint("Wrote table to '%s'" % outfilename, "green", attrs=["bold"])
 
@@ -58,6 +72,7 @@ if __name__ == "__main__":
         print("-n       : don't write a table header")
         print("-d arg   : use arg as column delimiter")
         print("-c [col] : color alternating rows, optionally using hex value col (defaults to dddddd)")
+        print("-f       : if output file already exists, overwrite without prompt")
         print("Example: %s file1.txt" % sys.argv[0])
         print("Example: %s -n -d , -c c1c2c3 file1.txt file2.txt" % sys.argv[0])
 
@@ -75,13 +90,15 @@ if __name__ == "__main__":
         elif arg == "-c":
             settings["colorrows"] = True
             expecting_color = True
+        elif arg == "-f":
+            settings["prompt"] = False
         elif arg == "-h":
             showhelp()
             exit()
         elif expecting_delimiter:
             settings["delimiter"] = arg
             expecting_delimiter = False
-        elif expecting_color: # TODO make sure a broken file path isn't interpreted as a color argument
+        elif expecting_color:
             try:
                 if len(arg) != 6:
                     raise ValueError("please use a 6-digit hex string, e.g. 'a1b2c3'")
