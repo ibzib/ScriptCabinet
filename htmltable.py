@@ -1,21 +1,23 @@
 #!/usr/bin/env python
+from __future__ import print_function
 import sys
 import os
 import codecs
 import xml.etree.cElementTree as etree
+try:
+    from termcolor import cprint
+except ImportError:
+    def cprint(text, *args, **kwargs):
+        # ignore args and kwargs
+        print(text)
 
-def maketable(infilename, **parameters):
-    settings = { "writeheader": True, "delimiter": "\t", "shaderows": False, "shadecolor": "dddddd" }
-    for param in parameters:
+def maketable(infilename, **kwargs):
+    settings = { "writeheader": True, "delimiter": "\t", "colorrows": False, "shadecolor": "dddddd" }
+    for param in kwargs:
         if param in settings:
-            settings[param] = parameters[param]
+            settings[param] = kwargs[param]
 
-    try:
-        infile = codecs.open(infilename, "r", encoding="utf-8")
-    except IOError as e:
-        print e
-        return
-
+    infile = codecs.open(infilename, "r", encoding="utf-8")
     lines = infile.readlines()
     table = etree.Element("table")
 
@@ -29,10 +31,10 @@ def maketable(infilename, **parameters):
     else:
         startindex = 0
     
-    shadenext = settings["shaderows"]
+    shadenext = settings["colorrows"]
     for line in lines[startindex:]:
         row = etree.SubElement(table, "tr")
-        if settings["shaderows"]:
+        if settings["colorrows"]:
             if shadenext:
                 row.set("style", "background-color: #%s;" % settings["shadecolor"])
                 shadenext = False
@@ -46,18 +48,18 @@ def maketable(infilename, **parameters):
     tree = etree.ElementTree(table)
     outfilename = os.path.splitext(infilename)[0] + ".html"
     tree.write(outfilename, encoding="utf-8")
-    print "Wrote table to '%s'" % outfilename
+    cprint("Wrote table to '%s'" % outfilename, "green", attrs=["bold"])
 
 if __name__ == "__main__":
     def showhelp():
-        print "Usage: %s [option] ... [file] ..." % sys.argv[0]
-        print "Options:"
-        print "-h       : show help"
-        print "-n       : don't write a table header"
-        print "-d arg   : use arg as column delimiter"
-        print "-s [col] : shade alternating rows, using (optional) hex value col"
-        print "Example: %s file1.txt" % sys.argv[0]
-        print "Example: %s -n -d , -s c1c2c3 file1.txt file2.txt" % sys.argv[0]
+        print("Usage: %s [option] ... [file] ..." % sys.argv[0])
+        print("Options:")
+        print("-h       : show help")
+        print("-n       : don't write a table header")
+        print("-d arg   : use arg as column delimiter")
+        print("-c [col] : color alternating rows, optionally using hex value col (defaults to dddddd)")
+        print("Example: %s file1.txt" % sys.argv[0])
+        print("Example: %s -n -d , -c c1c2c3 file1.txt file2.txt" % sys.argv[0])
 
     settings = {}
     filenames = []
@@ -70,8 +72,8 @@ if __name__ == "__main__":
             expecting_delimiter = True
         elif arg == "-n":
             settings["writeheader"] = False
-        elif arg == "-s":
-            settings["shaderows"] = True
+        elif arg == "-c":
+            settings["colorrows"] = True
             expecting_color = True
         elif arg == "-h":
             showhelp()
@@ -87,18 +89,27 @@ if __name__ == "__main__":
                 settings["shadecolor"] = arg
                 expecting_color = False
             except ValueError as e:
-                print "Invalid color value:", e
+                cprint("Invalid color value: %s" % e, "red")
                 exit(1)
-        else:
-            print "Invalid argument:", arg
+        elif arg.startswith("-") or arg.startswith("--"):
+            cprint("Invalid option: %s" % arg, "red")
             showhelp()
             exit(1)
+        else:
+            filenames.append(arg)
 
     if expecting_delimiter:
-        print "Error: No delimiter specified following -d flag"
+        cprint("Error: No delimiter specified following -d flag", "red")
+        showhelp()
         exit(1)
 
     if len(filenames) == 0:
-        print "Please enter at least 1 input file"
+        cprint("Please enter at least 1 input file", "red")
+        showhelp()
+        exit(1)
+
     for filename in filenames:
-        maketable(filename, **settings)
+        try:
+            maketable(filename, **settings)
+        except IOError as e:
+            cprint(e, "red")
